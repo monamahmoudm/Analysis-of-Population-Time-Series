@@ -1,0 +1,158 @@
+---
+title: "Time Series Project -- Sama & Mona"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(forecast)
+library(urca)
+library(tseries)
+```
+1.Download the data set
+```{r}
+my_data<-read.csv("population dataset.csv")
+my_data
+```
+
+
+```{r}
+my_data<-my_data['value']
+my_data<-my_data[-1,]
+my_data<-round(my_data/1000000,2)
+my_data
+```
+
+```{r}
+my_data=ts(my_data, start = 1900)
+plot.ts(my_data)
+```
+
+```{r}
+df=ur.df(my_data,type='trend',lags=1)
+summary(df)
+```
+
+```{r}
+df.adf=adf.test(my_data,k=1)
+df.adf
+```
+
+
+
+This dataset doesn't look stationary, try taking the difference.
+```{r}
+my_data_dif1<-diff(my_data,1)
+plot.ts(my_data_dif1)
+```
+
+```{r}
+print ('Lag = 1')
+df_diff=ur.df(my_data_dif1,type='trend',lags=1)
+summary(df_diff)
+
+print("--------------------------------------")
+df_adf1=adf.test(my_data_dif1,k=1)
+df_adf1
+```
+
+```{r}
+print ('Lag = 2')
+df_diff=ur.df(my_data_dif1,type='trend',lags=2)
+summary(df_diff)
+
+print("--------------------------------------")
+df_adf1=adf.test(my_data_dif1,k=2)
+df_adf1
+```
+
+```{r}
+print ('Lag = 3')
+df_diff=ur.df(my_data_dif1,type='trend',lags=3)
+summary(df_diff)
+
+print("--------------------------------------")
+df_adf1=adf.test(my_data_dif1,k=3)
+df_adf1
+```
+
+
+
+```{r}
+my_data_dif2<-diff(my_data,2)
+plot.ts(my_data_dif2)
+```
+
+
+
+```{r}
+df_diff2=ur.df(my_data_dif2,type='trend',lags=1)
+summary(df_diff2)
+```
+
+```{r}
+df_adf2=adf.test(my_data_dif2,k=1)
+df_adf2
+```
+
+
+Plot the ACF and PACF.
+```{r}
+dif1_acf<-acf(my_data_dif1)
+dif1_pacf<-pacf(my_data_dif1)
+```
+Therefore, the model seems to be arima(1,1,0)
+
+Estimating the parameters (we'll try arima (1,1,0) and arima (0,1,1))
+
+```{r}
+ma1<-arima(my_data,order=c(0,1,1))
+ma1
+```
+
+
+
+```{r}
+ar1<-arima(my_data,order=c(1,1,0))
+ar1
+```
+Model Becomes: 
+X_t= phi*X_t-1+ epsilon
+X_t=0.9885*X_t-1+0.0112
+
+phi= 0.9885
+epsilon= 0.0112
+
+Checking the model assumptions, NICE assumptions
+```{r}
+par(mfrow=c(2,2))
+qqnorm(ar1$residuals)
+qqline(ar1$residuals)
+plot.ts(ar1$residuals)
+acf(ar1$residuals)
+Box.test(ar1$residuals,lag=20,fitdf = 1)
+```
+Accept H0 -> errors are independent
+Errors are normally distributed
+Errors have an expectation equal to zero
+
+```{r}
+fr=forecast(ar1,h=5)
+fr
+```
+
+Calculating the interval of each of our prediction intervals
+```{r}
+p=matrix(c(fr$lower[,2],fr$upper[,2],(fr$upper[,2]-fr$lower[,2])),ncol=3)
+colnames(p)=c('Lower 95%','Upper 95%','Difference')
+p
+```
+
+
+We forecasted the next 5 observation and observed the prediction interval at a 80% and 95% confidence level
+point forecasts are in millions
+
+
